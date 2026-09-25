@@ -1,0 +1,14 @@
+const fs = require("node:fs");
+const crypto = require("node:crypto");
+require("@next/env").loadEnvConfig(process.cwd(), true);
+const callback = new URL(process.env.DISCORD_REDIRECT_URI || "");
+if(callback.pathname !== "/api/auth/callback/discord" || callback.search || callback.hash || callback.username || callback.password) throw Error("DISCORD_REDIRECT_URI precisa terminar em /api/auth/callback/discord, sem parâmetros.");
+if(callback.protocol !== "https:" && !(callback.protocol === "http:" && ["localhost","127.0.0.1"].includes(callback.hostname))) throw Error("Use HTTPS, exceto em localhost.");
+const filename=".env.local";
+let content=fs.readFileSync(filename,"utf8");
+if(!process.env.NEXTAUTH_SECRET) content+='\n# Segredo da sessão (gerado automaticamente)\nNEXTAUTH_SECRET="'+crypto.randomBytes(32).toString("base64url")+'"\n';
+if(!process.env.NEXTAUTH_URL) content+='NEXTAUTH_URL="'+callback.origin+'"\n';
+else if(process.env.NEXTAUTH_URL.replace(/\/$/,"")!==callback.origin) throw Error("NEXTAUTH_URL e DISCORD_REDIRECT_URI precisam usar a mesma origem.");
+if(!/^OWNER_DISCORD_ID=/m.test(content)) content+='\n# Seu ID de usuário Discord para reconhecer o proprietário\nOWNER_DISCORD_ID=""\n';
+fs.writeFileSync(filename,content);
+console.log("Configuração de sessão preparada. Callback válido. Nenhuma credencial foi exibida.");
