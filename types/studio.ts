@@ -4,9 +4,9 @@ export type StudioScript = {
   fileId?: string; fileName?: string; fileSize?: number; hasDownload?: boolean;
 };
 export type StudioLicense = {
-  _id: string; scriptId: string; scriptName?: string; discordId: string; key: string;
+  _id: string; scriptId: string; scriptName?: string; discordId: string | null; key: string;
   status: 'pending' | 'active' | 'revoked'; binding: string; createdAt: string;
-  expiresAt?: string | null; activatedAt?: string; revokedAt?: string;
+  expiresAt?: string | null; activatedAt?: string; redeemedAt?: string; revokedAt?: string;
   lastValidatedAt?: string;
 };
 export type StudioData = { scripts: StudioScript[]; licenses: StudioLicense[]; createdScriptId?: string };

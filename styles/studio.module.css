@@ -18,3 +18,8 @@
 .online{display:inline-flex;align-items:center;gap:7px}.rowActions button{display:inline-flex;align-items:center;gap:4px}
 
 .rowActions button.activationDone{color:#7ad5b0;opacity:1}.rowActions button.revokeAction{color:#ece8e1}.rowActions button.revocationDone{color:#ff4655;opacity:1}
+.redeemPanel{padding:22px 24px;margin-bottom:28px;background:linear-gradient(115deg,#192b38,#111d27);border:1px solid #3b4e5d;border-left:3px solid #ff4655}
+.redeemHeading{display:flex;align-items:center;gap:13px;margin-bottom:18px;color:#ff6876}.redeemHeading h2{font-size:13px;letter-spacing:1px;color:#ece8e1;margin:0 0 5px}.redeemHeading p{font-size:11px;color:#97aab8;margin:0}
+.redeemForm{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr) auto;gap:14px;align-items:end}.redeemForm label{display:flex;flex-direction:column;gap:7px;color:#99adbb;font-size:10px}.redeemForm input{width:100%;min-width:0;background:#0c1923;border:1px solid #3b5060;color:#e0e7ec;padding:12px;font-size:12px;min-height:43px}.redeemPanel>.error{margin:16px 0 0}
+@media(max-width:900px){.redeemForm{grid-template-columns:1fr 1fr}.redeemForm .primary{grid-column:1/-1}}
+@media(max-width:600px){.redeemPanel{padding:20px 16px}.redeemForm{grid-template-columns:1fr}.redeemForm input{font-size:16px}.redeemHeading p{line-height:1.7}}

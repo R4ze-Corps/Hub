@@ -53,10 +53,10 @@ async function run() {
   assert.equal((await request('/api/scripts/download?id='+scriptId,'client')).status,403);
   assert.equal((await request('/api/studio','owner',{action:'issue',scriptId,discordId:clientId,expiresAt:'2000-01-01'})).status,400);
   data=await mutate({action:'issue',scriptId,discordId:clientId,expiresAt:new Date(Date.now()+86400000).toISOString()});
-  let license=data.licenses[0];
+  let license=data.licenses[0]; assert.equal(license.discordId,null,'Issuance must not accept a Discord binding.'); const beforeClaim=await (await request('/api/studio','client')).json(); assert.equal(beforeClaim.licenses.length,0); assert.equal(beforeClaim.scripts.length,0);
   assert.equal((await validate(license)).valid,false,'Pending key must not validate.');
   assert.equal((await request('/api/studio','stranger',{action:'activate',id:license._id,binding:'server-01'})).status,409);
-  data=await mutate({action:'activate',id:license._id,binding:'server-01'},'client');assert.equal(data.licenses[0].status,'active');
+  data=await mutate({action:'redeem',key:license.key,binding:'server-01',discordId:strangerId},'client');assert.equal(data.licenses[0].discordId,clientId);assert.equal(data.licenses[0].status,'active');
   assert.equal((await validate(license)).valid,true);
   assert.equal((await validate(license,{binding:'wrong-server'})).valid,false);
   assert.equal((await validate(license,{scriptId:'other-script'})).valid,false);
@@ -69,8 +69,28 @@ async function run() {
   assert.equal((await request('/api/scripts/download?id='+scriptId,'client')).status,403);
   await mutate({action:'revoke',id:license._id});assert.equal((await validate(license)).valid,false);
   assert.equal((await request('/api/studio','client',{action:'activate',id:license._id,binding:'server-01'})).status,409);
+  // A transferred key cannot rebind an existing license, even for the owner.
+  assert.equal((await request('/api/studio','stranger',{action:'redeem',key:license.key,binding:'server-02'})).status,409);
+  let generated=await mutate({action:'issue',scriptId,expiresAt:null});
+  const contested=generated.licenses.find(l=>l.status==='pending');
+  const claims=await Promise.all(['client','stranger'].map(role=>request('/api/studio',role,{action:'redeem',key:contested.key,binding:'race-'+role,discordId:ownerId})));
+  assert.deepEqual(claims.map(r=>r.status).sort(),[200,409],'Exactly one simultaneous claimant must win.');
+  const winner=claims[0].status===200?'client':'stranger';
+  const claimed=await db.collection('hub_licenses').findOne({_id:contested._id});
+  assert.equal(claimed.discordId,winner==='client'?clientId:strangerId);assert.equal(claimed.binding,'race-'+winner);assert(claimed.redeemedAt);
+  assert.equal((await request('/api/studio','owner',{action:'redeem',key:contested.key,binding:'hijack'})).status,409);
+  generated=await mutate({action:'issue',scriptId,expiresAt:null});
+  const expired=generated.licenses.find(l=>l.status==='pending');
+  await db.collection('hub_licenses').updateOne({_id:expired._id},{$set:{expiresAt:new Date(Date.now()-1000).toISOString()}});
+  assert.equal((await request('/api/studio','client',{action:'redeem',key:expired.key,binding:'server-01'})).status,409);
+  await mutate({action:'revoke',id:expired._id});
+  generated=await mutate({action:'issue',scriptId,expiresAt:null});
+  const legacyLicense=generated.licenses.find(l=>l.status==='pending');
+  await db.collection('hub_licenses').updateOne({_id:legacyLicense._id},{$set:{discordId:clientId}});
+  assert.equal((await request('/api/studio','stranger',{action:'redeem',key:legacyLicense.key,binding:'server-01'})).status,409);
+  await mutate({action:'redeem',key:legacyLicense.key,binding:'server-01'},'client');
   data=await mutate({action:'issue',scriptId,discordId:clientId,expiresAt:null});license=data.licenses.find(l=>l.status==='pending');
-  await mutate({action:'activate',id:license._id,binding:'server-01'},'client');assert.equal((await validate(license)).valid,true,'Lifetime license must validate.');
+  await mutate({action:'redeem',key:license.key,binding:'server-01'},'client');assert.equal((await validate(license)).valid,true,'Lifetime license must validate.');
   await mutate({action:'deleteScript',id:scriptId});assert.equal((await validate(license)).valid,false);
   assert.equal((await request('/api/scripts/download?id='+scriptId,'owner')).status,404);
   assert.equal(await db.collection('hub_licenses').countDocuments({scriptId,status:{$ne:'revoked'}}),0);
@@ -78,7 +98,7 @@ async function run() {
   assert((await db.collection('hub_scripts').findOne({_id:scriptId})).deletedAt);
   await db.collection('hub_validation_limits').updateMany({},{$set:{count:121}});
   assert.equal((await validate(license)).status,429);await db.collection('hub_validation_limits').deleteMany({});
-  console.log('PASS: real MongoDB persistence, authorization, CSRF, ZIP storage/replacement/download, generation, activation, binding, expiration, revocation, deletion and validation rate limit.');
+  console.log('PASS: real MongoDB persistence, authorization, CSRF, ZIP storage/replacement/download, generation, first-claim binding, concurrent redemption, legacy ownership, expiration, revocation, deletion and validation rate limit.');
   if(process.env.TEST_PLAYWRIGHT_MODULE){
     const {chromium}=require(process.env.TEST_PLAYWRIGHT_MODULE);
     browser=await chromium.launch({channel:'msedge',headless:true});
@@ -88,7 +108,7 @@ async function run() {
     for(const [name,version] of [['Advanced Inventory','2.4.0'],['Garage System','1.8.2'],['Phone Pro','3.1.0']]){
       const created=await mutate({action:'script',name,version,description:'Um novo nível de controle para seu servidor. Configure, personalize e coloque em operação.'});
       const r=await mutate({action:'issue',scriptId:created.createdScriptId,discordId:clientId,expiresAt:new Date(Date.now()+30*86400000).toISOString()});
-      if(name==='Garage System')await mutate({action:'activate',id:r.licenses.find(l=>l.scriptId===created.createdScriptId)._id,binding:'server-01'});
+      if(name==='Garage System')await mutate({action:'redeem',key:r.licenses.find(l=>l.scriptId===created.createdScriptId).key,binding:'server-01'},'client');
     }
     await page.goto(base);await page.getByRole('heading',{name:'LICENÇAS RECENTES'}).waitFor();await page.getByText('Advanced Inventory',{exact:true}).first().waitFor();
     fs.mkdirSync('artifacts',{recursive:true});await page.screenshot({path:'artifacts/tactical-desktop.png',fullPage:true});
@@ -102,7 +122,7 @@ async function run() {
     assert(await db.collection('hub_scripts').findOne({name:'Upload pelo navegador',fileId:{$exists:true}}));
     await page.getByRole('button',{name:'Licenças',exact:false}).first().click();
     await page.getByRole('button',{name:'GERAR LICENÇA',exact:true}).click();
-    await page.getByLabel('ID do Discord do cliente').fill(clientId);
+    assert.equal(await page.getByLabel('ID do Discord do cliente').count(),0);
     await page.getByLabel('Validade').selectOption('custom');
     await page.getByLabel('Expira em').fill('2030-12-30T23:00');
     await page.screenshot({path:'artifacts/tactical-license-dialog.png',fullPage:true});
@@ -115,6 +135,16 @@ async function run() {
     const clientPage=await clientContext.newPage();await clientPage.goto(base);await clientPage.getByRole('heading',{name:'LICENÇAS RECENTES'}).waitFor();
     assert.equal(await clientPage.getByRole('button',{name:'GERAR LICENÇA',exact:true}).count(),0);
     assert.equal(await clientPage.getByText('Minha conta',{exact:true}).count(),0);
+    const redemptionData=await mutate({action:'issue',scriptId:(await db.collection('hub_scripts').findOne({name:'Upload pelo navegador'}))._id,expiresAt:null});
+    const browserLicense=redemptionData.licenses.find(l=>l.scriptName==='Upload pelo navegador'&&l.status==='pending');
+    await clientPage.getByLabel('Chave da licença',{exact:true}).fill(browserLicense.key);
+    await clientPage.getByLabel('Identificação do servidor',{exact:true}).fill('browser-server');
+    await clientPage.getByRole('button',{name:'LIBERAR SCRIPT',exact:true}).click();
+    await clientPage.getByRole('heading',{name:'BIBLIOTECA DE SCRIPTS'}).waitFor();
+    await clientPage.getByRole('heading',{name:'Upload pelo navegador',exact:true}).waitFor();
+    assert.equal((await db.collection('hub_licenses').findOne({_id:browserLicense._id})).discordId,clientId);
+    await clientPage.screenshot({path:'artifacts/redeem-library.png'});
+    console.log('PASS: client key redemption unlocks the library through the browser.');
     assert.equal(errors.length,0,'Browser must have no uncaught errors.');
     console.log('PASS: owner browser upload and issuance, mobile overflow, client controls, removed account screen, and desktop/library/modal/mobile screenshots.');
     await browser.close();browser=null;

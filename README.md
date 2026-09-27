@@ -12,9 +12,10 @@ Projeto Next.js preparado para Vercel, com login Discord, sessão protegida e pe
 
 **Painel:** interface escura inspirada em menus táticos, com visão geral, biblioteca e controle de licenças. Login Discord abre diretamente a home. A antiga rota `/conta` apenas redireciona para `/`.
 
-- Proprietário: publicar scripts com versão, descrição e ZIP; substituir ZIP; gerar licenças para um ID Discord; definir validade; revogar; excluir scripts.
-- Cliente: consultar as próprias licenças, ativar uma licença pendente com identificação de servidor e baixar scripts com licença ativa.
+- Proprietário: publicar scripts com versão, descrição e ZIP; substituir ZIP; gerar chaves sem Discord predefinido; definir validade; revogar; excluir scripts.
+- Cliente: resgatar uma chave informando o servidor, vinculá-la à própria conta Discord e consultar as próprias licenças e baixar scripts com licença ativa.
 - ZIP: até 3 MB, armazenado no MongoDB GridFS e servido por uma rota autenticada. O limite fica abaixo dos [4,5 MB da Vercel](https://vercel.com/docs/functions/limitations). Não são usadas URLs públicas para os arquivos.
+- Resgate: todos os usuários têm um campo para digitar a chave. O primeiro resgate válido vincula e ativa a licença na conta autenticada, em uma atualização atômica. Resgates simultâneos têm somente um vencedor. Novas chaves não aparecem para clientes antes do resgate; a biblioteca do cliente inclui apenas scripts com licença ativa. Licenças antigas já atribuídas mantêm seu vínculo. Nenhum ID Discord enviado pelo navegador pode substituir o da sessão.
 - Expiração: armazenada em UTC e verificada em toda ativação, validação e download. A interface mostra o horário local. Licenças antigas sem expiração continuam vitalícias. Não é necessário cron para bloquear uma licença vencida.
 - Exclusão: remove o script da biblioteca, bloqueia novos downloads/validações e revoga as licenças. Registros e arquivo são preservados internamente para histórico; substituir um ZIP remove o arquivo anterior.
 - Persistência: `hub_scripts`, `hub_licenses`, `hub_files.files`/`hub_files.chunks` e `hub_validation_limits` (TTL). Índices são criados automaticamente; o usuário MongoDB precisa de permissão de leitura, escrita e criação de índices no banco.

@@ -2,6 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { getServerSession } from 'next-auth/next';
 import { randomBytes, randomUUID } from 'node:crypto';
 import { authOptions, isOwner } from '@/lib/auth';
+import { licenseStatus } from '@/types/studio';
 import { studioDatabase, unexpired } from '@/lib/studio-db';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -14,8 +15,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const origin = process.env.NEXTAUTH_URL;
     if (!origin || req.headers.origin !== new URL(origin).origin || !req.headers['content-type']?.startsWith('application/json')) return res.status(403).json({ error: 'Origem da solicitação inválida.' });
     if (!req.body || typeof req.body !== 'object') return res.status(400).json({ error: 'Solicitação inválida.' });
-    if (!['script', 'deleteScript', 'issue', 'activate', 'revoke'].includes(req.body.action)) return res.status(400).json({ error: 'Operação inválida.' });
-    if (!owner && req.body.action !== 'activate') return res.status(403).json({ error: 'Operação exclusiva do proprietário.' });
+    if (!['script', 'deleteScript', 'issue', 'redeem', 'activate', 'revoke'].includes(req.body.action)) return res.status(400).json({ error: 'Operação inválida.' });
+    if (!owner && !['activate', 'redeem'].includes(req.body.action)) return res.status(403).json({ error: 'Operação exclusiva do proprietário.' });
   }
   try {
     const { scripts, licenses } = await studioDatabase();
@@ -40,20 +41,33 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         // A exclusão bloqueia validação/download imediatamente; preserva o histórico das licenças.
         await licenses.updateMany({ scriptId: id, status: { $ne: 'revoked' } }, { $set: { status: 'revoked', revokedAt: now } });
       } else if (body.action === 'issue') {
-        const discordId = field('discordId', 20), scriptId = field('scriptId');
+        const scriptId = field('scriptId');
         const script = await scripts.findOne({ _id: scriptId, deletedAt: null });
-        if (!/^[0-9]{17,20}$/.test(discordId) || !script) return res.status(400).json({ error: 'Selecione um script e informe um ID válido do Discord.' });
+        if (!script) return res.status(400).json({ error: 'Selecione um script disponível.' });
         let expiresAt: string | null = null;
         if (body.expiresAt) {
           const expiry = typeof body.expiresAt === 'string' ? new Date(body.expiresAt) : new Date(NaN);
           if (!Number.isFinite(expiry.getTime()) || expiry.getTime() <= Date.now()) return res.status(400).json({ error: 'A expiração deve ser uma data futura.' });
           expiresAt = expiry.toISOString();
         }
-        await licenses.insertOne({ _id: randomUUID(), scriptId, scriptName: script.name, discordId, key: 'PROTO-' + randomBytes(24).toString('hex').toUpperCase(), status: 'pending', binding: '', createdAt: now, expiresAt });
+        await licenses.insertOne({ _id: randomUUID(), scriptId, scriptName: script.name, discordId: null, key: 'PROTO-' + randomBytes(24).toString('hex').toUpperCase(), status: 'pending', binding: '', createdAt: now, expiresAt });
+      } else if (body.action === 'redeem') {
+        const key = field('key', 80).toUpperCase(), binding = field('binding');
+        if (!/^PROTO-[A-F0-9]{48}$/.test(key) || !binding) return res.status(400).json({ error: 'Informe uma chave válida e a identificação do servidor.' });
+        // A atribuição e a ativação são uma única operação condicional no MongoDB.
+        // O mesmo filtro no update impede dois resgates de vencerem simultaneamente.
+        const filter = { key, status: 'pending' as const, $and: [
+          { $or: [{ discordId: null }, { discordId: session.user.id }] },
+          unexpired(now),
+        ] };
+        const license = await licenses.findOne(filter);
+        if (!license || !await scripts.findOne({ _id: license.scriptId, deletedAt: null })) return res.status(409).json({ error: 'Esta chave está indisponível, expirada ou já vinculada a outra conta.' });
+        const result = await licenses.updateOne(filter, { $set: { discordId: session.user.id, status: 'active', binding, activatedAt: now, redeemedAt: now } });
+        if (!result.modifiedCount) return res.status(409).json({ error: 'Esta chave já foi resgatada. Atualize sua biblioteca.' });
       } else if (body.action === 'activate') {
         const binding = field('binding');
         if (!binding) return res.status(400).json({ error: 'Informe a identificação do servidor.' });
-        const filter = { _id: field('id'), ...(owner ? {} : { discordId: session.user.id }), status: 'pending' as const, ...unexpired(now) };
+        const filter = { _id: field('id'), discordId: session.user.id, status: 'pending' as const, ...unexpired(now) };
         const license = await licenses.findOne(filter);
         if (!license || !await scripts.findOne({ _id: license.scriptId, deletedAt: null })) return res.status(409).json({ error: 'Licença expirada, removida ou indisponível.' });
         const result = await licenses.updateOne(filter, { $set: { status: 'active', binding, activatedAt: now } });
@@ -64,7 +78,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     }
     const visibleLicenses = await licenses.find(owner ? {} : { discordId: session.user.id }).sort({ createdAt: -1 }).toArray();
-    const visibleScripts = await scripts.find({ deletedAt: null, ...(owner ? {} : { _id: { $in: visibleLicenses.map(l => l.scriptId) } }) }).toArray();
+    const visibleScripts = await scripts.find({ deletedAt: null, ...(owner ? {} : { _id: { $in: visibleLicenses.filter(l => licenseStatus(l) === 'active').map(l => l.scriptId) } }) }).toArray();
     // Clientes recebem downloads apenas pela rota autenticada, após verificação da licença.
     const publicScripts = visibleScripts.map(({ downloadUrl, fileId, ...script }) => ({ ...script, hasDownload: !!(downloadUrl || fileId) }));
     return res.status(200).json({ scripts: publicScripts, licenses: visibleLicenses, ...(createdScriptId ? { createdScriptId } : {}) });
