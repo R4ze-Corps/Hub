@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "@/styles/globals.css";
 
 export const metadata: Metadata = {
-  title: "Protocolo — License Studio",
-  description: "Acesse sua conta Protocolo com Discord.",
+  title: "CORE HUB — License Studio",
+  description: "Acesse sua conta CORE HUB com Discord.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

@@ -1,4 +1,4 @@
-import { ArrowUpRight } from 'lucide-react';
+import { ChevronRight } from 'lucide-react';
 import Head from "next/head";
 import { useState } from "react";
 import { signIn } from "next-auth/react";
@@ -25,12 +25,12 @@ export const getServerSideProps: GetServerSideProps = async ({req,res,query}) =>
 export default function Login({error}:{error:string|null}){
   const [busy,setBusy]=useState(false),[failure,setFailure]=useState<string|null>(null);
   async function login(){setBusy(true);setFailure(null);try{await signIn("discord",{callbackUrl:"/"})}catch{setFailure("Não foi possível abrir o login. Tente novamente.");setBusy(false)}}
-  return <main className={styles.desktop}><Head><title>Entrar · Protocolo</title><meta name="description" content="Entre com Discord para acessar sua conta Protocolo."/></Head>
-    <section className={styles.window}><div className={styles.titlebar}><span>PROTOCOLO / ACCESS CONTROL</span></div><div className={styles.body}>
-      <div className={styles.logo} aria-hidden="true">P</div><p className={styles.eyebrow}>AUTENTICAÇÃO DISCORD</p><h1>ENTRE EM OPERAÇÃO.</h1><p className={styles.description}>Entre com sua conta do Discord para acessar suas licenças.</p>
+  return <main className={styles.desktop}><Head><title>Entrar · CORE HUB</title><meta name="description" content="Entre com Discord para acessar sua conta CORE HUB."/></Head>
+    <section className={styles.window}><div className={styles.titlebar}><span>CORE HUB / ACCESS CONTROL</span></div><div className={styles.body}>
+      <div className={styles.logo} aria-hidden="true">C</div><p className={styles.eyebrow}>AUTENTICAÇÃO DISCORD</p><h1>ENTRE EM OPERAÇÃO.</h1><p className={styles.description}>Entre com sua conta do Discord para acessar suas licenças.</p>
       {(error||failure)&&<p className={styles.error} role="alert">{failure||error}</p>}
-      <button className={styles.primary} onClick={login} disabled={busy}>{busy?"Abrindo Discord…":"Entrar com Discord"}<ArrowUpRight size={18} strokeWidth={1.5} aria-hidden="true"/></button>
+      <button className={styles.primary} onClick={login} disabled={busy}>{busy?"Abrindo Discord…":"Entrar com Discord"}<ChevronRight size={18} strokeWidth={2} aria-hidden="true"/></button>
       <p className={styles.note}>Usamos seu perfil do Discord para identificar sua conta.</p>
-    </div><footer className={styles.footer}>Protocolo <span>License Studio</span></footer></section>
+    </div><footer className={styles.footer}>CORE HUB <span>License Studio</span></footer></section>
   </main>;
 }
