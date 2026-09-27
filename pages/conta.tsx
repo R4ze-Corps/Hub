@@ -1,3 +1,4 @@
+import Link from "next/link";
 import Head from "next/head";
 import {useState} from "react";
 import {getServerSession} from "next-auth/next";
@@ -17,6 +18,6 @@ export default function Account({user}:AccountProps){
  async function logout(){setBusy(true);try{await signOut({callbackUrl:"/login"})}catch{setError("Não foi possível sair. Tente novamente.");setBusy(false)}}
  return <main className={styles.desktop}><Head><title>Minha conta · Protocolo</title></Head><section className={styles.window}>
  <div className={styles.titlebar}><span className={styles.traffic} aria-hidden="true"><i/><i/><i/></span><span>Protocolo · Minha conta</span></div>
- <div className={styles.body}><div className={styles.avatar}>{user.name.slice(0,2).toUpperCase()}</div><p className={styles.eyebrow}>DISCORD CONECTADO</p><h1>Olá, {user.name}.</h1><p className={styles.description}>Sua conta está conectada com segurança.</p><dl className={styles.details}><div><dt>ID do Discord</dt><dd>{user.id}</dd></div><div><dt>Perfil</dt><dd>{user.role==="owner"?"Proprietário":"Cliente"}</dd></div></dl><p className={styles.notice}>A gestão de licenças ainda está sendo integrada a esta versão do projeto.</p>{error&&<p className={styles.error} role="alert">{error}</p>}<button className={styles.secondary} disabled={busy} onClick={logout}>{busy?"Saindo…":"Sair da conta"}</button></div>
+ <div className={styles.body}><div className={styles.avatar}>{user.name.slice(0,2).toUpperCase()}</div><p className={styles.eyebrow}>DISCORD CONECTADO</p><h1>Olá, {user.name}.</h1><p className={styles.description}>Sua conta está conectada com segurança.</p><dl className={styles.details}><div><dt>ID do Discord</dt><dd>{user.id}</dd></div><div><dt>Perfil</dt><dd>{user.role==="owner"?"Proprietário":"Cliente"}</dd></div></dl><p className={styles.notice}>Acesse o painel para acompanhar seus scripts e licenças.</p>{error&&<p className={styles.error} role="alert">{error}</p>}<Link href="/" className={styles.primary}>Abrir painel →</Link><button className={styles.secondary} disabled={busy} onClick={logout}>{busy?"Saindo…":"Sair da conta"}</button></div>
  <footer className={styles.footer}>Protocolo <span>License Studio</span></footer></section></main>;
 }

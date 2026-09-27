@@ -17,13 +17,13 @@ const messages: Record<string,string> = {
 export const getServerSideProps: GetServerSideProps = async ({req,res,query}) => {
   res.setHeader("Cache-Control","no-store");
   const session=await getServerSession(req,res,authOptions);
-  if(session?.user?.id) return {redirect:{destination:"/conta",permanent:false}};
+  if(session?.user?.id) return {redirect:{destination:"/",permanent:false}};
   const error=typeof query.error==="string" ? messages[query.error] || "O login não foi concluído. Tente novamente." : null;
   return {props:{error}};
 };
 export default function Login({error}:{error:string|null}){
   const [busy,setBusy]=useState(false),[failure,setFailure]=useState<string|null>(null);
-  async function login(){setBusy(true);setFailure(null);try{await signIn("discord",{callbackUrl:"/conta"})}catch{setFailure("Não foi possível abrir o login. Tente novamente.");setBusy(false)}}
+  async function login(){setBusy(true);setFailure(null);try{await signIn("discord",{callbackUrl:"/"})}catch{setFailure("Não foi possível abrir o login. Tente novamente.");setBusy(false)}}
   return <main className={styles.desktop}><Head><title>Entrar · Protocolo</title><meta name="description" content="Entre com Discord para acessar sua conta Protocolo."/></Head>
     <section className={styles.window}><div className={styles.titlebar}><span className={styles.traffic} aria-hidden="true"><i/><i/><i/></span><span>Protocolo · License Studio</span></div><div className={styles.body}>
       <div className={styles.logo} aria-hidden="true">⌘</div><p className={styles.eyebrow}>SEU ESPAÇO</p><h1>Bem-vindo de volta.</h1><p className={styles.description}>Entre com sua conta do Discord para acessar suas licenças.</p>

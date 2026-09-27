@@ -63,7 +63,7 @@ export const authOptions: NextAuthOptions = {
         const next = new URL(url, baseUrl);
         if(next.origin === new URL(baseUrl).origin) return next.href;
       } catch {}
-      return new URL("/conta", baseUrl).href;
+      return new URL("/", baseUrl).href;
     },
   },
   logger: {

@@ -10,7 +10,7 @@ Projeto Next.js preparado para Vercel, com login Discord, sessão protegida e pe
 - Reconhecimento do proprietário por `OWNER_DISCORD_ID`; sem esse valor, todos são clientes.
 - Pool MongoDB registrado com `attachDatabasePool`.
 
-**Escopo desta versão:** autenticação e conta. O painel de gerenciamento de scripts/licenças do projeto separado `license-studio` ainda não foi migrado para este repositório. Emissão e validação de licenças não estão disponíveis nesta aplicação.
+**Painel:** o login abre `/`, com visão geral, scripts e licenças. `/conta` permanece disponível pelo menu. O proprietário cadastra scripts, emite chaves para IDs do Discord e revoga licenças. Clientes consultam apenas seus registros e liberam licenças pendentes para um servidor. Os dados ficam nas coleções `hub_scripts` e `hub_licenses`; dados do projeto antigo não são importados automaticamente. A API de validação a ser consumida pelos scripts e o fluxo de compra/concessão de direitos ainda não estão implementados.
 
 ## Desenvolvimento
 
@@ -68,6 +68,7 @@ npm run build
 npm run start
 # Em outro terminal, com o servidor em localhost:3000:
 npm run test:auth
+node scripts/test-studio.cjs
 ```
 
 O teste verifica acesso anônimo bloqueado, CSRF, destino Discord, escopo identify, state, callback inválido e rejeição de sessão adulterada. Ele não realiza uma autorização real na conta do Discord. O primeiro login completo precisa ser testado no navegador.

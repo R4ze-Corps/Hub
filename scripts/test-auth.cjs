@@ -7,7 +7,7 @@ async function request(route,options={}){
  return res;
 }
 (async()=>{
- let r=await request("/login");assert(r.status===200,"Login page must render.");
+ let r=await request("/");assert(r.status===307&&r.headers.get("location")==="/login","Dashboard must require sign-in."); r=await request("/api/studio");assert(r.status===401,"Studio API must require sign-in."); r=await request("/login");assert(r.status===200,"Login page must render.");
  r=await request("/api/account");assert(r.status===401,"Anonymous API access must be rejected.");
  r=await request("/conta");assert(r.status===307&&r.headers.get("location")==="/login","Account page must require sign-in.");
  r=await request("/api/auth/session");assert(Object.keys(await r.json()).length===0,"Anonymous session must be empty.");
