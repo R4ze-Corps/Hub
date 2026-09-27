@@ -1,3 +1,4 @@
+import { ArrowUpRight } from 'lucide-react';
 import Head from "next/head";
 import { useState } from "react";
 import { signIn } from "next-auth/react";
@@ -28,7 +29,7 @@ export default function Login({error}:{error:string|null}){
     <section className={styles.window}><div className={styles.titlebar}><span>PROTOCOLO / ACCESS CONTROL</span></div><div className={styles.body}>
       <div className={styles.logo} aria-hidden="true">P</div><p className={styles.eyebrow}>AUTENTICAÇÃO DISCORD</p><h1>ENTRE EM OPERAÇÃO.</h1><p className={styles.description}>Entre com sua conta do Discord para acessar suas licenças.</p>
       {(error||failure)&&<p className={styles.error} role="alert">{failure||error}</p>}
-      <button className={styles.primary} onClick={login} disabled={busy}>{busy?"Abrindo Discord…":"Entrar com Discord"}<span aria-hidden="true">↗</span></button>
+      <button className={styles.primary} onClick={login} disabled={busy}>{busy?"Abrindo Discord…":"Entrar com Discord"}<ArrowUpRight size={18} strokeWidth={1.5} aria-hidden="true"/></button>
       <p className={styles.note}>Usamos seu perfil do Discord para identificar sua conta.</p>
     </div><footer className={styles.footer}>Protocolo <span>License Studio</span></footer></section>
   </main>;

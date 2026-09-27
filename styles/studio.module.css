@@ -14,3 +14,5 @@
 @media(max-height:650px){.sidebarNote{display:none}}
 
 .identity>span{overflow:hidden}.identity>span>img{display:block;width:100%;height:100%;object-fit:cover}
+
+.online{display:inline-flex;align-items:center;gap:7px}.rowActions button{display:inline-flex;align-items:center;gap:4px}
