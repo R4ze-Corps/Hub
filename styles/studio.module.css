@@ -16,3 +16,5 @@
 .identity>span{overflow:hidden}.identity>span>img{display:block;width:100%;height:100%;object-fit:cover}
 
 .online{display:inline-flex;align-items:center;gap:7px}.rowActions button{display:inline-flex;align-items:center;gap:4px}
+
+.rowActions button.activationDone{color:#7ad5b0;opacity:1}.rowActions button.revokeAction{color:#ece8e1}.rowActions button.revocationDone{color:#ff4655;opacity:1}
