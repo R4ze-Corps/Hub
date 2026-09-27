@@ -2,7 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { KeyRound, LaptopMinimalCheck } from 'lucide-react';
 import s from '@/styles/studio.module.css';
 
-type Props = { busy: boolean; onRedeem: (key: string, binding: string) => Promise<void> };
+type Props = { busy: boolean; onRedeem: (key: string) => Promise<void> };
 export default function RedeemLicense({ busy, onRedeem }: Props) {
   const [error, setError] = useState('');
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -12,7 +12,7 @@ export default function RedeemLicense({ busy, onRedeem }: Props) {
     const values = new FormData(form);
     setError('');
     try {
-      await onRedeem(String(values.get('licenseKey') || '').trim(), String(values.get('serverBinding') || '').trim());
+      await onRedeem(String(values.get('licenseKey') || '').trim());
       form.reset();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Não foi possível resgatar a licença.');
@@ -22,7 +22,6 @@ export default function RedeemLicense({ busy, onRedeem }: Props) {
     <div className={s.redeemHeading}><KeyRound size={22} aria-hidden='true'/><div><h2 id='redeem-title'>RESGATAR LICENÇA</h2><p>Digite sua chave para liberar o script na sua biblioteca.</p></div></div>
     <form onSubmit={submit} className={s.redeemForm}>
       <label>Chave da licença<input name='licenseKey' required maxLength={80} autoComplete='off' spellCheck={false} placeholder='Cole sua licença aqui' disabled={busy}/></label>
-      <label>Identificação do servidor<input name='serverBinding' required maxLength={120} autoComplete='off' placeholder='Ex.: meu-servidor-01' disabled={busy}/></label>
       <button className={s.primary} disabled={busy}><LaptopMinimalCheck size={18} aria-hidden='true'/>LIBERAR SCRIPT</button>
     </form>
     {error && <p className={s.error} role='alert'>{error}</p>}

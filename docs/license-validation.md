@@ -6,8 +6,7 @@ Envie a chave pelo header `Authorization: Bearer SUA_CHAVE`, nunca pela URL. Cor
 
 ```json
 {
-  "scriptId": "ID do script exibido nos detalhes da licença",
-  "binding": "identificação exata informada ao liberar a licença"
+  "scriptId": "ID do script exibido nos detalhes da licença"
 }
 ```
 
@@ -28,7 +27,7 @@ Uma licença válida retorna HTTP 200:
 - HTTP 429: mais de 120 tentativas por minuto por IP; respeite `Retry-After`.
 - HTTP 503: serviço indisponível; não autorize execução. Tente novamente com intervalo.
 
-O vínculo usa um identificador informado pelo script; não é atestado de hardware nem verificação automática de IP. Quem conhece a chave e o identificador pode apresentá-los à API. Mantenha a chave no ambiente do servidor e não a exponha em código de navegador/NUI.
+Novos resgates vinculam a licença ao Discord sem exigir identificação de servidor. Para essas licenças, envie somente o scriptId e a chave. Licenças antigas que já possuíam servidor vinculado continuam exigindo o campo binding original. A API usa a chave como credencial; o vínculo Discord controla resgate e biblioteca, não é atestado de hardware nem verificação automática de IP. Mantenha a chave no ambiente do servidor e não a exponha em código de navegador/NUI.
 
 ## Exemplo para um script Node.js
 
@@ -45,7 +44,7 @@ async function validateLicense() {
         },
         body: JSON.stringify({
           scriptId: process.env.PROTOCOLO_SCRIPT_ID,
-          binding: process.env.PROTOCOLO_SERVER_ID,
+
         }),
         signal: AbortSignal.timeout(8000),
       },

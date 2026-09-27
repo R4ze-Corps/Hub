@@ -48,10 +48,10 @@ export default function Home({ user }: Props) {
   }
   async function refresh() { setBusy(true); setError(''); try { await request(); } catch (e) { setError((e as Error).message); } finally { setBusy(false); } }
   useEffect(() => { void refresh(); const timer = setInterval(() => setNow(Date.now()), 30000); return () => clearInterval(timer); }, []);
-  async function redeem(key: string, binding: string) {
+  async function redeem(key: string) {
     setBusy(true); setError(''); setNotice('');
     try {
-      await request({ action: 'redeem', key, binding });
+      await request({ action: 'redeem', key });
       navigate('scripts');
       setNotice('Licença vinculada ao seu Discord. O script foi liberado na biblioteca.');
     } finally { setBusy(false); }
@@ -82,7 +82,7 @@ export default function Home({ user }: Props) {
       } else if (modal.kind === 'issue') {
         const expiresAt = duration === 'lifetime' ? null : duration === 'custom' ? new Date(value('expiresAt')).toISOString() : new Date(Date.now() + Number(duration) * 86400000).toISOString();
         await request({ action: 'issue', scriptId: value('scriptId'), expiresAt });
-      } else if (modal.kind === 'activate') await request({ action: 'activate', id: modal.license._id, binding: value('binding') });
+      } else if (modal.kind === 'activate') await request({ action: 'activate', id: modal.license._id });
       else if (modal.kind === 'delete') await request({ action: 'deleteScript', id: modal.script._id });
       else if (modal.kind === 'revoke') await request({ action: 'revoke', id: modal.license._id });
       setModal(null); setNotice('Operação concluída. Seus dados foram salvos.');
@@ -122,7 +122,7 @@ export default function Home({ user }: Props) {
       {modal.kind === 'script' && <><label>Nome do script<input name='name' required maxLength={120} autoFocus placeholder='Ex.: Advanced Inventory'/></label><label>Versão<input name='version' required defaultValue='1.0.0' maxLength={30}/></label><label>Descrição<textarea name='description' maxLength={1000} placeholder='O que esse script oferece?'/></label></>}
       {(modal.kind === 'script' || modal.kind === 'upload') && <label className={s.fileField}><Icon name='box' size={25}/><span>PACOTE DO SCRIPT</span><input name='file' type='file' accept='.zip,application/zip' required/><small>Arquivo ZIP de até 3 MB. Download protegido por licença ativa.</small></label>}
       {modal.kind === 'issue' && <><label>Script<select name='scriptId' defaultValue={modal.scriptId || scripts[0]?._id} required>{scripts.map(script => <option value={script._id} key={script._id}>{script.name} · v{script.version}</option>)}</select></label><label>Validade<select value={duration} onChange={e => setDuration(e.target.value)}><option value='7'>7 dias</option><option value='30'>30 dias</option><option value='90'>90 dias</option><option value='365'>1 ano</option><option value='lifetime'>Vitalícia</option><option value='custom'>Data e hora personalizadas</option></select></label>{duration === 'custom' && <label>Expira em (seu horário local)<input name='expiresAt' type='datetime-local' required/></label>}<p className={s.formHelp}>A validade começa na emissão. A primeira conta Discord que resgatar a chave ficará vinculada à licença. Compartilhe a chave somente com o destinatário.</p></>}
-      {modal.kind === 'activate' && <><p className={s.formHelp}>Vincule a licença de <b>{title(modal.license)}</b> ao servidor que usará o script.</p><label>Identificação do servidor<input name='binding' required maxLength={120} autoFocus placeholder='Ex.: meu-servidor-01'/></label><p className={s.formHelp}>Use exatamente esta identificação na integração de validação do script.</p></>}
+      {modal.kind === 'activate' && <><p className={s.formHelp}>Liberar <b>{title(modal.license)}</b> na biblioteca da sua conta Discord?</p></>}
       {modal.kind === 'delete' && <p className={s.confirmText}>Excluir <b>{modal.script.name}</b> da biblioteca? O download será bloqueado e todas as licenças deste script serão revogadas. O histórico será preservado.</p>}
       {modal.kind === 'revoke' && <p className={s.confirmText}>Revogar a licença de <b>{title(modal.license)}</b>? Ela deixará de validar e não permitirá novos downloads. Esta chave não poderá ser reativada.</p>}
       {error && <p className={s.error} role='alert'>{error}</p>}<div className={s.formActions}><button type='button' disabled={busy} className={s.secondary} onClick={() => { setModal(null); setError(''); }}>CANCELAR</button><button className={s.primary} disabled={busy}>{busy ? 'PROCESSANDO…' : modal.kind === 'delete' ? 'EXCLUIR E REVOGAR' : modal.kind === 'revoke' ? 'REVOGAR LICENÇA' : modal.kind === 'issue' ? 'GERAR CHAVE' : modal.kind === 'activate' ? 'LIBERAR ACESSO' : 'PUBLICAR'}<Icon name='arrow' size={16}/></button></div></form>}

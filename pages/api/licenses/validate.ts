@@ -8,7 +8,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const authorization = req.headers.authorization || '';
   const key = authorization.startsWith('Bearer ') ? authorization.slice(7) : '';
   const { scriptId, binding } = req.body || {};
-  if (!/^PROTO-[A-F0-9]{48}$/.test(key) || typeof scriptId !== 'string' || !scriptId || scriptId.length > 120 || typeof binding !== 'string' || !binding || binding.length > 120) return res.status(400).json({ valid: false, reason: 'invalid_request' });
+  if (!/^PROTO-[A-F0-9]{48}$/.test(key) || typeof scriptId !== 'string' || !scriptId || scriptId.length > 120 || (binding !== undefined && (typeof binding !== 'string' || binding.length > 120))) return res.status(400).json({ valid: false, reason: 'invalid_request' });
   try {
     const { db, scripts, licenses } = await studioDatabase();
     const forwarded = req.headers['x-forwarded-for'];
@@ -21,7 +21,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (limit && limit.count > 120) { res.setHeader('Retry-After', '60'); return res.status(429).json({ valid: false, reason: 'rate_limited' }); }
     if (!await scripts.findOne({ _id: scriptId, deletedAt: null })) return res.status(200).json({ valid: false, reason: 'invalid_license' });
     const now = new Date().toISOString();
-    const license = await licenses.findOneAndUpdate({ key, scriptId, binding, status: 'active', ...unexpired(now) }, { $set: { lastValidatedAt: now } }, { returnDocument: 'after' });
+    const license = await licenses.findOneAndUpdate({ key, scriptId, status: 'active', $and: [unexpired(now), { $or: [{ binding: '' }, { binding: { $exists: false } }, ...(typeof binding === 'string' && binding ? [{ binding }] : [])] }] }, { $set: { lastValidatedAt: now } }, { returnDocument: 'after' });
     if (!license) return res.status(200).json({ valid: false, reason: 'invalid_license' });
     return res.status(200).json({ valid: true, scriptId, expiresAt: license.expiresAt || null, checkedAt: now });
   } catch {

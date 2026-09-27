@@ -32,7 +32,7 @@ async function run() {
   for(const [role,id] of Object.entries({owner:ownerId,client:clientId,stranger:strangerId}))tokens[role]=await encode({secret,token:{discordId:id,name:role==='owner'?'Operador Protocolo':'Cliente de teste'},maxAge:600});
   async function request(path,role,body,extra={}){return fetch(base+path,{redirect:'manual',method:body!==undefined?'POST':'GET',headers:{...(role?{cookie:'next-auth.session-token='+tokens[role]}:{}),...(body!==undefined?{'Content-Type':'application/json',origin:base}:{}),...extra},...(body!==undefined?{body:JSON.stringify(body)}:{})});}
   async function mutate(body,role='owner'){const r=await request('/api/studio',role,body);assert.equal(r.status,200,'Studio mutation failed: '+body.action);return r.json();}
-  async function validate(license,overrides={}){const r=await request('/api/licenses/validate',null,{scriptId:license.scriptId,binding:'server-01',...overrides},{authorization:'Bearer '+license.key});return {status:r.status,...await r.json()};}
+  async function validate(license,overrides={}){const r=await request('/api/licenses/validate',null,{scriptId:license.scriptId,...overrides},{authorization:'Bearer '+license.key});return {status:r.status,...await r.json()};}
   assert.equal((await request('/api/studio')).status,401);
   assert.equal((await request('/api/scripts/download?id=none')).status,401);
   assert.equal((await request('/')).status,307);
@@ -56,9 +56,9 @@ async function run() {
   let license=data.licenses[0]; assert.equal(license.discordId,null,'Issuance must not accept a Discord binding.'); const beforeClaim=await (await request('/api/studio','client')).json(); assert.equal(beforeClaim.licenses.length,0); assert.equal(beforeClaim.scripts.length,0);
   assert.equal((await validate(license)).valid,false,'Pending key must not validate.');
   assert.equal((await request('/api/studio','stranger',{action:'activate',id:license._id,binding:'server-01'})).status,409);
-  data=await mutate({action:'redeem',key:license.key,binding:'server-01',discordId:strangerId},'client');assert.equal(data.licenses[0].discordId,clientId);assert.equal(data.licenses[0].status,'active');
+  data=await mutate({action:'redeem',key:license.key,discordId:strangerId},'client');assert.equal(data.licenses[0].discordId,clientId);assert.equal(data.licenses[0].status,'active');
   assert.equal((await validate(license)).valid,true);
-  assert.equal((await validate(license,{binding:'wrong-server'})).valid,false);
+  assert.equal((await validate(license,{binding:'ignored-for-new-license'})).valid,true); await db.collection('hub_licenses').updateOne({_id:license._id},{$set:{binding:'legacy-server'}}); assert.equal((await validate(license)).valid,false); assert.equal((await validate(license,{binding:'legacy-server'})).valid,true); await db.collection('hub_licenses').updateOne({_id:license._id},{$set:{binding:''}});
   assert.equal((await validate(license,{scriptId:'other-script'})).valid,false);
   const downloaded=await request('/api/scripts/download?id='+scriptId,'client');assert.equal(downloaded.status,200);assert.deepEqual(Buffer.from(await downloaded.arrayBuffer()),zip);
   assert.equal((await request('/api/scripts/download?id='+scriptId,'stranger')).status,403);
@@ -77,7 +77,7 @@ async function run() {
   assert.deepEqual(claims.map(r=>r.status).sort(),[200,409],'Exactly one simultaneous claimant must win.');
   const winner=claims[0].status===200?'client':'stranger';
   const claimed=await db.collection('hub_licenses').findOne({_id:contested._id});
-  assert.equal(claimed.discordId,winner==='client'?clientId:strangerId);assert.equal(claimed.binding,'race-'+winner);assert(claimed.redeemedAt);
+  assert.equal(claimed.discordId,winner==='client'?clientId:strangerId);assert.equal(claimed.binding,'');assert(claimed.redeemedAt);
   assert.equal((await request('/api/studio','owner',{action:'redeem',key:contested.key,binding:'hijack'})).status,409);
   generated=await mutate({action:'issue',scriptId,expiresAt:null});
   const expired=generated.licenses.find(l=>l.status==='pending');
@@ -138,7 +138,7 @@ async function run() {
     const redemptionData=await mutate({action:'issue',scriptId:(await db.collection('hub_scripts').findOne({name:'Upload pelo navegador'}))._id,expiresAt:null});
     const browserLicense=redemptionData.licenses.find(l=>l.scriptName==='Upload pelo navegador'&&l.status==='pending');
     await clientPage.getByLabel('Chave da licença',{exact:true}).fill(browserLicense.key);
-    await clientPage.getByLabel('Identificação do servidor',{exact:true}).fill('browser-server');
+    assert.equal(await clientPage.getByLabel('Identificação do servidor',{exact:true}).count(),0);
     await clientPage.getByRole('button',{name:'LIBERAR SCRIPT',exact:true}).click();
     await clientPage.getByRole('heading',{name:'BIBLIOTECA DE SCRIPTS'}).waitFor();
     await clientPage.getByRole('heading',{name:'Upload pelo navegador',exact:true}).waitFor();

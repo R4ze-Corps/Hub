@@ -52,8 +52,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
         await licenses.insertOne({ _id: randomUUID(), scriptId, scriptName: script.name, discordId: null, key: 'PROTO-' + randomBytes(24).toString('hex').toUpperCase(), status: 'pending', binding: '', createdAt: now, expiresAt });
       } else if (body.action === 'redeem') {
-        const key = field('key', 80).toUpperCase(), binding = field('binding');
-        if (!/^PROTO-[A-F0-9]{48}$/.test(key) || !binding) return res.status(400).json({ error: 'Informe uma chave válida e a identificação do servidor.' });
+        const key = field('key', 80).toUpperCase();
+        if (!/^PROTO-[A-F0-9]{48}$/.test(key)) return res.status(400).json({ error: 'Informe uma chave válida.' });
         // A atribuição e a ativação são uma única operação condicional no MongoDB.
         // O mesmo filtro no update impede dois resgates de vencerem simultaneamente.
         const filter = { key, status: 'pending' as const, $and: [
@@ -62,15 +62,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         ] };
         const license = await licenses.findOne(filter);
         if (!license || !await scripts.findOne({ _id: license.scriptId, deletedAt: null })) return res.status(409).json({ error: 'Esta chave está indisponível, expirada ou já vinculada a outra conta.' });
-        const result = await licenses.updateOne(filter, { $set: { discordId: session.user.id, status: 'active', binding, activatedAt: now, redeemedAt: now } });
+        const result = await licenses.updateOne(filter, { $set: { discordId: session.user.id, status: 'active', binding: '', activatedAt: now, redeemedAt: now } });
         if (!result.modifiedCount) return res.status(409).json({ error: 'Esta chave já foi resgatada. Atualize sua biblioteca.' });
       } else if (body.action === 'activate') {
-        const binding = field('binding');
-        if (!binding) return res.status(400).json({ error: 'Informe a identificação do servidor.' });
         const filter = { _id: field('id'), discordId: session.user.id, status: 'pending' as const, ...unexpired(now) };
         const license = await licenses.findOne(filter);
         if (!license || !await scripts.findOne({ _id: license.scriptId, deletedAt: null })) return res.status(409).json({ error: 'Licença expirada, removida ou indisponível.' });
-        const result = await licenses.updateOne(filter, { $set: { status: 'active', binding, activatedAt: now } });
+        const result = await licenses.updateOne(filter, { $set: { status: 'active', binding: '', activatedAt: now } });
         if (!result.modifiedCount) return res.status(409).json({ error: 'A licença já foi alterada. Atualize o painel.' });
       } else {
         const result = await licenses.updateOne({ _id: field('id'), status: { $ne: 'revoked' } }, { $set: { status: 'revoked', revokedAt: now } });
