@@ -5,12 +5,21 @@ Projeto Next.js preparado para Vercel, com login Discord, sessão protegida e pe
 ## Implementado
 
 - Login OAuth pelo Discord com NextAuth, proteção de state e CSRF.
-- Página de conta e API protegidas no servidor.
+- Painel e APIs protegidos no servidor; clientes acessam somente suas licenças.
 - Perfil Discord salvo em `discord_users` (ID Discord como chave única).
 - Reconhecimento do proprietário por `OWNER_DISCORD_ID`; sem esse valor, todos são clientes.
 - Pool MongoDB registrado com `attachDatabasePool`.
 
-**Painel:** o login abre `/`, com visão geral, scripts e licenças. `/conta` permanece disponível pelo menu. O proprietário cadastra scripts, emite chaves para IDs do Discord e revoga licenças. Clientes consultam apenas seus registros e liberam licenças pendentes para um servidor. Os dados ficam nas coleções `hub_scripts` e `hub_licenses`; dados do projeto antigo não são importados automaticamente. A API de validação a ser consumida pelos scripts e o fluxo de compra/concessão de direitos ainda não estão implementados.
+**Painel:** interface escura inspirada em menus táticos, com visão geral, biblioteca e controle de licenças. Login Discord abre diretamente a home. A antiga rota `/conta` apenas redireciona para `/`.
+
+- Proprietário: publicar scripts com versão, descrição e ZIP; substituir ZIP; gerar licenças para um ID Discord; definir validade; revogar; excluir scripts.
+- Cliente: consultar as próprias licenças, ativar uma licença pendente com identificação de servidor e baixar scripts com licença ativa.
+- ZIP: até 3 MB, armazenado no MongoDB GridFS e servido por uma rota autenticada. O limite fica abaixo dos [4,5 MB da Vercel](https://vercel.com/docs/functions/limitations). Não são usadas URLs públicas para os arquivos.
+- Expiração: armazenada em UTC e verificada em toda ativação, validação e download. A interface mostra o horário local. Licenças antigas sem expiração continuam vitalícias. Não é necessário cron para bloquear uma licença vencida.
+- Exclusão: remove o script da biblioteca, bloqueia novos downloads/validações e revoga as licenças. Registros e arquivo são preservados internamente para histórico; substituir um ZIP remove o arquivo anterior.
+- Persistência: `hub_scripts`, `hub_licenses`, `hub_files.files`/`hub_files.chunks` e `hub_validation_limits` (TTL). Índices são criados automaticamente; o usuário MongoDB precisa de permissão de leitura, escrita e criação de índices no banco.
+
+A validação está disponível em `POST /api/licenses/validate`. Cada script precisa chamar essa API no servidor para aplicar o bloqueio de execução. Veja [a integração](docs/license-validation.md). O upload do ZIP não modifica automaticamente seu código. Dados da aplicação antiga não são importados automaticamente.
 
 ## Desenvolvimento
 
@@ -68,10 +77,12 @@ npm run build
 npm run start
 # Em outro terminal, com o servidor em localhost:3000:
 npm run test:auth
-node scripts/test-studio.cjs
+npm run test:studio
 ```
 
 O teste verifica acesso anônimo bloqueado, CSRF, destino Discord, escopo identify, state, callback inválido e rejeição de sessão adulterada. Ele não realiza uma autorização real na conta do Discord. O primeiro login completo precisa ser testado no navegador.
+
+`npm run test:integration` inicia um servidor local na porta 3087, usa um banco aleatório `protocolo_test_*` no cluster configurado e limpa suas coleções ao finalizar. Requer permissão para criar coleções, gravar registros e remover os dados temporários. Não usa dados de produção. Execute após a build. Para capturas e testes opcionais de navegador, defina `TEST_PLAYWRIGHT_MODULE` com o caminho do módulo Playwright instalado; o teste usa Edge headless.
 
 `npm run auth:check` testa a conexão MongoDB sem revelar a string de conexão.
 

@@ -25,8 +25,8 @@ export default function Login({error}:{error:string|null}){
   const [busy,setBusy]=useState(false),[failure,setFailure]=useState<string|null>(null);
   async function login(){setBusy(true);setFailure(null);try{await signIn("discord",{callbackUrl:"/"})}catch{setFailure("Não foi possível abrir o login. Tente novamente.");setBusy(false)}}
   return <main className={styles.desktop}><Head><title>Entrar · Protocolo</title><meta name="description" content="Entre com Discord para acessar sua conta Protocolo."/></Head>
-    <section className={styles.window}><div className={styles.titlebar}><span className={styles.traffic} aria-hidden="true"><i/><i/><i/></span><span>Protocolo · License Studio</span></div><div className={styles.body}>
-      <div className={styles.logo} aria-hidden="true">⌘</div><p className={styles.eyebrow}>SEU ESPAÇO</p><h1>Bem-vindo de volta.</h1><p className={styles.description}>Entre com sua conta do Discord para acessar suas licenças.</p>
+    <section className={styles.window}><div className={styles.titlebar}><span>PROTOCOLO / ACCESS CONTROL</span></div><div className={styles.body}>
+      <div className={styles.logo} aria-hidden="true">P</div><p className={styles.eyebrow}>AUTENTICAÇÃO DISCORD</p><h1>ENTRE EM OPERAÇÃO.</h1><p className={styles.description}>Entre com sua conta do Discord para acessar suas licenças.</p>
       {(error||failure)&&<p className={styles.error} role="alert">{failure||error}</p>}
       <button className={styles.primary} onClick={login} disabled={busy}>{busy?"Abrindo Discord…":"Entrar com Discord"}<span aria-hidden="true">↗</span></button>
       <p className={styles.note}>Usamos seu perfil do Discord para identificar sua conta.</p>
