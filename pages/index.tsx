@@ -7,14 +7,14 @@ import { authOptions } from '@/lib/auth';
 import { licenseStatus, type StudioData, type StudioLicense, type StudioScript } from '@/types/studio';
 import s from '@/styles/studio.module.css';
 
-type Props = { user: { id: string; name: string; role: 'owner' | 'client' } };
+type Props = { user: { id: string; name: string; image: string | null; role: 'owner' | 'client' } };
 type View = 'overview' | 'licenses' | 'scripts';
 type Modal = { kind: 'script' } | { kind: 'issue'; scriptId?: string } | { kind: 'upload'; scriptId: string } | { kind: 'delete'; script: StudioScript } | { kind: 'activate' | 'revoke' | 'detail'; license: StudioLicense };
 export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res }) => {
   res.setHeader('Cache-Control', 'private, no-store');
   const session = await getServerSession(req, res, authOptions);
   if (!session?.user?.id) return { redirect: { destination: '/login', permanent: false } };
-  return { props: { user: { id: session.user.id, name: session.user.name || 'Cliente', role: session.user.role } } };
+  return { props: { user: { id: session.user.id, name: session.user.name || 'Cliente', image: session.user.image || null, role: session.user.role } } };
 };
 const labels = { overview: 'Visão geral', licenses: 'Licenças', scripts: 'Biblioteca' };
 const statusLabels = { active: 'Ativa', pending: 'Pendente', revoked: 'Revogada', expired: 'Expirada' };
@@ -26,6 +26,7 @@ function Emblem() { return <svg className={s.emblem} viewBox='0 0 420 300' fill=
 const dateLabel = (value?: string | null) => value ? new Date(value).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : 'Vitalícia';
 export default function Home({ user }: Props) {
   const owner = user.role === 'owner';
+  const [failedAvatar, setFailedAvatar] = useState<string | null>(null);
   const [view, setView] = useState<View>('overview'), [data, setData] = useState<StudioData | null>(null);
   const [busy, setBusy] = useState(false), [error, setError] = useState(''), [notice, setNotice] = useState('');
   const [modal, setModal] = useState<Modal | null>(null), [query, setQuery] = useState(''), [filter, setFilter] = useState('all');
@@ -85,7 +86,7 @@ export default function Home({ user }: Props) {
   const pending = licenses.filter(l => licenseStatus(l, now) === 'pending').length;
   function badge(license: StudioLicense) { const state = licenseStatus(license, now); return <span className={`${s.badge} ${s[state]}`}><i/>{statusLabels[state]}</span>; }
   return <main className={s.desktop}><Head><title>{labels[view]} · Protocolo</title><meta name='theme-color' content='#0b141d'/></Head>
-    <header className={s.topbar}><button className={s.brand} onClick={() => navigate('overview')}><span className={s.brandMark}>P</span><span>PROTOCOLO<small>LICENSE CONTROL SYSTEM</small></span></button><div className={s.topMeta}><span className={s.online}>● CONECTADO</span><div className={s.identity}><span>{user.name.slice(0, 2).toUpperCase()}</span><div><b>{user.name}</b><small>DISCORD VINCULADO</small></div><i/></div></div><button className={s.logout} onClick={() => void signOut({ callbackUrl: '/login' }).catch(() => setError('Não foi possível sair.'))}><Icon name='exit' size={17}/><span>Sair</span></button></header>
+    <header className={s.topbar}><button className={s.brand} onClick={() => navigate('overview')}><span className={s.brandMark}>P</span><span>PROTOCOLO<small>LICENSE CONTROL SYSTEM</small></span></button><div className={s.topMeta}><span className={s.online}>● CONECTADO</span><div className={s.identity}><span>{user.image && failedAvatar !== user.image ? <img src={user.image} alt={`Foto de ${user.name} no Discord`} width={36} height={38} referrerPolicy='no-referrer' onError={() => setFailedAvatar(user.image)}/> : user.name.slice(0, 2).toUpperCase()}</span><div><b>{user.name}</b><small>DISCORD VINCULADO</small></div><i/></div></div><button className={s.logout} onClick={() => void signOut({ callbackUrl: '/login' }).catch(() => setError('Não foi possível sair.'))}><Icon name='exit' size={17}/><span>Sair</span></button></header>
     <div className={s.layout}><aside className={s.sidebar}><div className={s.navLabel}>WORKSPACE <span>01</span></div><nav>{(Object.keys(labels) as View[]).map((v, i) => <button key={v} className={view === v ? s.selected : ''} aria-current={view === v ? 'page' : undefined} onClick={() => navigate(v)}><Icon name={['grid', 'key', 'box'][i]}/><span>{labels[v]}</span><small>0{i + 1}</small></button>)}</nav><div className={s.sidebarNote}><Icon name='shield' size={26}/><p>CONTROLE DE ACESSO</p><small>{owner ? 'Seu código. Suas regras.' : 'Seu acesso começa aqui.'}</small><div className={s.signal}><i/><i/><i/><i/><i/></div></div></aside>
     <section className={s.content} tabIndex={0} aria-label="Conteúdo do painel"><div className={s.breadcrumb}><span>PROTOCOLO / {labels[view].toUpperCase()}</span><button disabled={busy} onClick={() => void refresh()}><Icon name='refresh' size={14}/>{busy ? 'SINCRONIZANDO' : 'ATUALIZAR'}</button></div>
       {error && !modal && <div className={s.error} role='alert'>{error}<button disabled={busy} onClick={() => void refresh()}>Tentar novamente</button></div>}
