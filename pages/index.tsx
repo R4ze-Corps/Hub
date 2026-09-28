@@ -1,6 +1,6 @@
 import { upload as uploadBlob } from '@vercel/blob/client';
 import RedeemLicense from '@/components/redeem-license';
-import { LayoutGrid, KeyRound, FileTerminal, ChevronRight, Plus, Download, Trash2, ShieldCheck, RefreshCw, DoorOpen, Search, ClockFading, Layers2, LaptopMinimalCheck, ServerOff, X, Circle, type LucideIcon } from 'lucide-react';
+import { ScanEye, FolderCode, LayoutGrid, KeyRound, FileTerminal, ChevronRight, Plus, Download, Trash2, ShieldCheck, RefreshCw, DoorOpen, Search, ClockFading, Layers2, LaptopMinimalCheck, ServerOff, X, Circle, type LucideIcon } from 'lucide-react';
 import Head from 'next/head';
 import { useEffect, useState, type FormEvent } from 'react';
 import { getServerSession } from 'next-auth/next';
@@ -34,7 +34,13 @@ function Icon({ name, size = 20 }: { name: string; size?: number }) {
 function Emblem() { return <svg className={s.emblem} viewBox='0 0 420 300' fill='none' aria-hidden='true'><path d='M70 150L210 10l140 140-140 140z' stroke='#ff4655' strokeOpacity='.18'/><path d='M110 150L210 50l100 100-100 100z' stroke='#8aa6b3' strokeOpacity='.3'/><path d='M277 91H177l-40 40v60l40 40h100l-32-40h-50l-18-18v-24l18-18h50z' fill='#ff4655'/><path d='M210 148h54l-20 26h-34z' fill='#ece8e1'/><path d='M15 150h83 M322 150h83 M210 0v35 M210 265v35' stroke='#80929d' strokeOpacity='.35'/><circle cx='210' cy='150' r='128' stroke='#80929d' strokeDasharray='2 18' strokeOpacity='.4'/><path d='M45 70V40h30 M345 40h30v30 M45 230v30h30 M345 260h30v-30' stroke='#ff4655'/><text x='8' y='286' fill='#657982' fontSize='9' fontFamily='monospace'>CORE HUB / ACCESS CONTROL</text><text x='333' y='18' fill='#ff4655' fontSize='9' fontFamily='monospace'>CH—01</text></svg>; }
 const dateLabel = (value?: string | null) => value ? new Date(value).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : 'Vitalícia';
 export default function Home({ user }: Props) {
-  const owner = user.role === 'owner';
+  const canManage = user.role === 'owner';
+  const [clientMode, setClientMode] = useState(false);
+  const owner = canManage && !clientMode;
+  function changeMode(client: boolean) {
+    if (busy || client === clientMode) return;
+    setClientMode(client); setModal(null); setQuery(''); setFilter('all'); setError(''); setNotice('');
+  }
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [failedAvatar, setFailedAvatar] = useState<string | null>(null);
   const [view, setView] = useState<View>('overview'), [data, setData] = useState<StudioData | null>(null);
@@ -111,7 +117,8 @@ export default function Home({ user }: Props) {
     catch (e) { setError((e as Error).message); } finally { setBusy(false); }
   }
   async function copy(text: string) { try { await navigator.clipboard.writeText(text); setNotice('Copiado para a área de transferência.'); } catch { setError('Não foi possível copiar. Abra os detalhes e selecione o texto.'); } }
-  const licenses = data?.licenses || [], scripts = data?.scripts || [];
+  const licenses = (data?.licenses || []).filter(license => owner || license.discordId === user.id);
+  const scripts = (data?.scripts || []).filter(script => owner || licenses.some(license => license.scriptId === script._id && licenseStatus(license, now) === 'active'));
   const title = (license: StudioLicense) => scripts.find(x => x._id === license.scriptId)?.name || license.scriptName || 'Script removido';
   const rows = licenses.filter(l => (filter === 'all' || licenseStatus(l, now) === filter) && [title(l), l.discordId, l.key].join(' ').toLowerCase().includes(query.toLowerCase()));
   const shownScripts = scripts.filter(x => [x.name, x.version, x.description].join(' ').toLowerCase().includes(query.toLowerCase()));
@@ -119,7 +126,7 @@ export default function Home({ user }: Props) {
   const pending = licenses.filter(l => licenseStatus(l, now) === 'pending').length;
   function badge(license: StudioLicense) { const state = licenseStatus(license, now); return <span className={`${s.badge} ${s[state]}`}><i/>{statusLabels[state]}</span>; }
   return <main className={s.desktop}><Head><title>{labels[view]} · CORE HUB</title><meta name='theme-color' content='#0b141d'/></Head>
-    <header className={s.topbar}><button className={s.brand} onClick={() => navigate('overview')}><span className={s.brandMark}>C</span><span>CORE HUB<small>LICENSE CONTROL SYSTEM</small></span></button><div className={s.topMeta}><span className={s.online}><Circle size={5} fill='currentColor' aria-hidden='true'/> CONECTADO</span><div className={s.identity}><span>{user.image && failedAvatar !== user.image ? <img src={user.image} alt={`Foto de ${user.name} no Discord`} width={36} height={38} referrerPolicy='no-referrer' onError={() => setFailedAvatar(user.image)}/> : user.name.slice(0, 2).toUpperCase()}</span><div><b>{user.name}</b><small>DISCORD VINCULADO</small></div><i/></div></div><button className={s.logout} onClick={() => void signOut({ callbackUrl: '/login' }).catch(() => setError('Não foi possível sair.'))}><Icon name='exit' size={17}/><span>Sair</span></button></header>
+    <header className={s.topbar}><button className={s.brand} onClick={() => navigate('overview')}><span className={s.brandMark}>C</span><span>CORE HUB<small>LICENSE CONTROL SYSTEM</small></span></button><div className={s.topMeta}>{canManage && <div className={s.modeToggle} role='group' aria-label='Modo de visualização'><button type='button' aria-label='Modo Cliente' title='Modo Cliente' aria-pressed={clientMode} disabled={busy} onClick={() => changeMode(true)}><ScanEye size={18} aria-hidden='true'/><span>Cliente</span></button><button type='button' aria-label='Modo Dono' title='Modo Dono' aria-pressed={!clientMode} disabled={busy} onClick={() => changeMode(false)}><FolderCode size={18} aria-hidden='true'/><span>Dono</span></button></div>}<span className={s.online}><Circle size={5} fill='currentColor' aria-hidden='true'/> CONECTADO</span><div className={s.identity}><span>{user.image && failedAvatar !== user.image ? <img src={user.image} alt={`Foto de ${user.name} no Discord`} width={36} height={38} referrerPolicy='no-referrer' onError={() => setFailedAvatar(user.image)}/> : user.name.slice(0, 2).toUpperCase()}</span><div><b>{user.name}</b><small>DISCORD VINCULADO</small></div><i/></div></div><button className={s.logout} onClick={() => void signOut({ callbackUrl: '/login' }).catch(() => setError('Não foi possível sair.'))}><Icon name='exit' size={17}/><span>Sair</span></button></header>
     <div className={s.layout}><aside className={s.sidebar}><div className={s.navLabel}>WORKSPACE <span>01</span></div><nav>{(Object.keys(labels) as View[]).map((v, i) => <button key={v} className={view === v ? s.selected : ''} aria-current={view === v ? 'page' : undefined} onClick={() => navigate(v)}><Icon name={['grid', 'key', 'box'][i]}/><span>{labels[v]}</span><small>0{i + 1}</small></button>)}</nav><div className={s.sidebarNote}><Icon name='shield' size={26}/><p>CONTROLE DE ACESSO</p><small>{owner ? 'Seu código. Suas regras.' : 'Seu acesso começa aqui.'}</small><div className={s.signal}><i/><i/><i/><i/><i/></div></div></aside>
     <section className={s.content} tabIndex={0} aria-label="Conteúdo do painel"><div className={s.breadcrumb}><span>CORE HUB / {labels[view].toUpperCase()}</span><button disabled={busy} onClick={() => void refresh()}><Icon name='refresh' size={14}/>{busy ? 'SINCRONIZANDO' : 'ATUALIZAR'}</button></div>
       {error && !modal && <div className={s.error} role='alert'>{error}<button disabled={busy} onClick={() => void refresh()}>Tentar novamente</button></div>}

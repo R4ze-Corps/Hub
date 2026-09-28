@@ -25,3 +25,7 @@
 @media(max-width:600px){.redeemPanel{padding:20px 16px}.redeemForm{grid-template-columns:1fr}.redeemForm input{font-size:16px}.redeemHeading p{line-height:1.7}}
 
 .uploadProgress{display:grid;gap:8px;font-size:11px;color:#a7cbbc}.uploadProgress progress{width:100%;height:6px;accent-color:#ff4655}
+
+.modeToggle{display:flex;flex-shrink:0;gap:3px;padding:3px;border:1px solid #334754;background:#09131c}.modeToggle button{display:flex;align-items:center;justify-content:center;gap:7px;min-height:34px;padding:7px 10px;background:transparent;border:1px solid transparent;color:#91a7b5;font-size:10px;letter-spacing:.5px}.modeToggle button:hover{color:#ece8e1;background:#1b2c38}.modeToggle button[aria-pressed=true]{color:#ece8e1;background:#ff46551c;border-color:#ff46555c}.modeToggle button[aria-pressed=true] svg{color:#ff6975}
+@media(max-width:1100px){.modeToggle button span{display:none}.topMeta{gap:15px}}
+@media(max-width:600px){.modeToggle{gap:0;padding:2px}.modeToggle button{padding:6px;min-width:30px}.topMeta{gap:8px}.topbar:has(.modeToggle){gap:10px}.topbar:has(.modeToggle) .brand{font-size:14px!important;letter-spacing:1px}.topbar:has(.modeToggle) .brandMark{display:none}}

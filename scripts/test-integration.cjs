@@ -112,6 +112,23 @@ async function run() {
     }
     await page.goto(base);await page.getByRole('heading',{name:'LICENÇAS RECENTES'}).waitFor();await page.getByText('Advanced Inventory',{exact:true}).first().waitFor();
     fs.mkdirSync('artifacts',{recursive:true});await page.screenshot({path:'artifacts/tactical-desktop.png',fullPage:true});
+    await page.getByRole('button',{name:'Modo Cliente',exact:true}).click();
+    assert.equal(await page.getByRole('button',{name:'Modo Cliente',exact:true}).getAttribute('aria-pressed'),'true');
+    assert.equal(await page.getByRole('button',{name:'GERAR LICENÇA',exact:true}).count(),0);
+    assert.equal(await page.getByText('Advanced Inventory',{exact:true}).count(),0);
+    const ownerKey=await db.collection('hub_licenses').findOne({scriptName:'Advanced Inventory',status:'pending'});
+    await page.getByLabel('Chave da licença',{exact:true}).fill(ownerKey.key);
+    await page.getByRole('button',{name:'LIBERAR SCRIPT',exact:true}).click();
+    await page.getByRole('heading',{name:'Advanced Inventory',exact:true}).waitFor();
+    assert.equal(await page.getByRole('heading',{name:'Garage System',exact:true}).count(),0);
+    assert.equal(await page.getByRole('button',{name:'PUBLICAR SCRIPT',exact:true}).count(),0);
+    await page.screenshot({path:'artifacts/owner-client-mode.png'});
+    await page.getByRole('button',{name:'ATUALIZAR',exact:true}).click();
+    await page.getByRole('button',{name:'Modo Dono',exact:true}).waitFor();
+    await page.getByRole('button',{name:'Modo Dono',exact:true}).click();
+    await page.getByRole('heading',{name:'Garage System',exact:true}).waitFor();
+    assert.equal(await page.getByRole('button',{name:'Modo Dono',exact:true}).getAttribute('aria-pressed'),'true');
+    console.log('PASS: owner toggles client view, redeems own key, sees only owned scripts, and restores admin controls.');
     await page.getByRole('button',{name:'Biblioteca',exact:false}).first().click();
     await page.getByRole('heading',{name:'BIBLIOTECA DE SCRIPTS'}).waitFor();await page.screenshot({path:'artifacts/tactical-library.png',fullPage:true});
     await page.getByRole('button',{name:'PUBLICAR SCRIPT',exact:true}).click();
@@ -135,6 +152,7 @@ async function run() {
     const clientPage=await clientContext.newPage();await clientPage.goto(base);await clientPage.getByRole('heading',{name:'LICENÇAS RECENTES'}).waitFor();
     assert.equal(await clientPage.getByRole('button',{name:'GERAR LICENÇA',exact:true}).count(),0);
     assert.equal(await clientPage.getByText('Minha conta',{exact:true}).count(),0);
+    assert.equal(await clientPage.getByRole('group',{name:'Modo de visualização'}).count(),0);
     const redemptionData=await mutate({action:'issue',scriptId:(await db.collection('hub_scripts').findOne({name:'Upload pelo navegador'}))._id,expiresAt:null});
     const browserLicense=redemptionData.licenses.find(l=>l.scriptName==='Upload pelo navegador'&&l.status==='pending');
     await clientPage.getByLabel('Chave da licença',{exact:true}).fill(browserLicense.key);
