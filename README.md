@@ -14,7 +14,7 @@ Projeto Next.js preparado para Vercel, com login Discord, sessão protegida e pe
 
 - Proprietário: publicar scripts com versão, descrição e ZIP; substituir ZIP; gerar chaves sem Discord predefinido; definir validade; revogar; excluir scripts.
 - Cliente: resgatar uma chave sem informar servidor, vinculá-la à própria conta Discord e consultar as próprias licenças e baixar scripts com licença ativa.
-- ZIP: até 3 MB, armazenado no MongoDB GridFS e servido por uma rota autenticada. O limite fica abaixo dos [4,5 MB da Vercel](https://vercel.com/docs/functions/limitations). Não são usadas URLs públicas para os arquivos.
+- ZIP: até 100 MB com upload direto e progresso pelo Vercel Blob privado. O servidor autoriza somente o proprietário e confere tamanho e assinatura ZIP antes de publicar o arquivo. Downloads exigem licença ativa e usam um link temporário de 60 segundos. Arquivos antigos no MongoDB GridFS continuam disponíveis; sem Blob configurado, novos uploads usam GridFS com limite de 3 MB.
 - Resgate: todos os usuários têm um campo para digitar apenas a chave. O primeiro resgate válido vincula e ativa a licença na conta autenticada, em uma atualização atômica. Resgates simultâneos têm somente um vencedor. Novas chaves não aparecem para clientes antes do resgate; a biblioteca do cliente inclui apenas scripts com licença ativa. Licenças antigas já atribuídas mantêm seu vínculo. Nenhum ID Discord enviado pelo navegador pode substituir o da sessão.
 - Expiração: armazenada em UTC e verificada em toda ativação, validação e download. A interface mostra o horário local. Licenças antigas sem expiração continuam vitalícias. Não é necessário cron para bloquear uma licença vencida.
 - Exclusão: remove o script da biblioteca, bloqueia novos downloads/validações e revoga as licenças. Registros e arquivo são preservados internamente para histórico; substituir um ZIP remove o arquivo anterior.
@@ -59,6 +59,7 @@ Acesse `http://localhost:3000/login`.
 | `DISCORD_REDIRECT_URI` | A mesma origem seguida de `/api/auth/callback/discord` |
 | `NEXTAUTH_SECRET` | Segredo aleatório forte e estável; pode ser gerado com o comando abaixo |
 | `OWNER_DISCORD_ID` | ID numérico da sua conta pessoal Discord, não o Application ID |
+| `BLOB_READ_WRITE_TOKEN` | Token do Vercel Blob privado conectado ao projeto, para ZIPs de até 100 MB |
 
 ```sh
 node -e "console.log(require('node:crypto').randomBytes(32).toString('base64url'))"
@@ -70,6 +71,8 @@ O NextAuth deriva seu callback de `NEXTAUTH_URL`; mantenha `DISCORD_REDIRECT_URI
 
 Configure a permissão de rede do MongoDB para aceitar conexões da hospedagem. As variáveis secretas não usam o prefixo `NEXT_PUBLIC_`.
 
+Conecte um armazenamento **privado** em Vercel > Storage ao projeto, habilite `BLOB_READ_WRITE_TOKEN` no ambiente de produção e faça um novo deploy. Na biblioteca, publique ou substitua o ZIP normalmente. O navegador envia o arquivo diretamente ao Blob, evitando o limite de corpo das Functions. O MongoDB guarda os metadados e as licenças. Revogar uma licença bloqueia novos links; um link já emitido permanece utilizável por até 60 segundos. Uploads abandonados podem deixar arquivos sem referência no armazenamento; a limpeza do arquivo anterior após uma substituição é feita por melhor esforço.
+
 ## Verificação
 
 ```sh
@@ -79,6 +82,7 @@ npm run start
 # Em outro terminal, com o servidor em localhost:3000:
 npm run test:auth
 npm run test:studio
+npm run test:blob
 ```
 
 O teste verifica acesso anônimo bloqueado, CSRF, destino Discord, escopo identify, state, callback inválido e rejeição de sessão adulterada. Ele não realiza uma autorização real na conta do Discord. O primeiro login completo precisa ser testado no navegador.
@@ -86,6 +90,8 @@ O teste verifica acesso anônimo bloqueado, CSRF, destino Discord, escopo identi
 `npm run test:integration` inicia um servidor local na porta 3087, usa um banco aleatório `protocolo_test_*` no cluster configurado e limpa suas coleções ao finalizar. Requer permissão para criar coleções, gravar registros e remover os dados temporários. Não usa dados de produção. Execute após a build. Para capturas e testes opcionais de navegador, defina `TEST_PLAYWRIGHT_MODULE` com o caminho do módulo Playwright instalado; o teste usa Edge headless.
 
 `npm run auth:check` testa a conexão MongoDB sem revelar a string de conexão.
+
+`npm run test:blob` verifica autorização, armazenamento privado, limites, finalização concorrente e links de download com respostas simuladas do Blob. Não substitui o teste de envio e download real no projeto Vercel conectado.
 
 ## Arquivo de distribuição
 

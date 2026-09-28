@@ -24,7 +24,7 @@ async function run() {
   const db=mongo.db(testName);
   assert.equal(db.databaseName,testName);
   await db.createCollection('test_marker');
-  server=spawn(process.execPath,['node_modules/next/dist/bin/next','start','--hostname','127.0.0.1','--port','3087'],{env:{...process.env,MONGODB_URI:uri,NEXTAUTH_URL:base,NEXTAUTH_SECRET:secret,OWNER_DISCORD_ID:ownerId},stdio:'ignore',windowsHide:true});
+  server=spawn(process.execPath,['node_modules/next/dist/bin/next','start','--hostname','127.0.0.1','--port','3087'],{env:{...process.env,BLOB_READ_WRITE_TOKEN:'',MONGODB_URI:uri,NEXTAUTH_URL:base,NEXTAUTH_SECRET:secret,OWNER_DISCORD_ID:ownerId},stdio:'ignore',windowsHide:true});
   let ready=false;
   for(let i=0;i<60;i++){try{const r=await fetch(base+'/login');if(r.status===200){ready=true;break}}catch{}await new Promise(r=>setTimeout(r,500));}
   assert(ready,'Test server did not become ready.');

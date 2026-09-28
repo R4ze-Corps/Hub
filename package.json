@@ -9,9 +9,11 @@
     "auth:prepare": "node scripts/prepare-auth-env.cjs",
     "auth:check": "node scripts/check-auth-config.cjs",
     "test:studio": "node scripts/test-studio.cjs",
-    "test:integration": "node scripts/test-integration.cjs"
+    "test:integration": "node scripts/test-integration.cjs",
+    "test:blob": "node scripts/test-blob.cjs"
   },
   "dependencies": {
+    "@vercel/blob": "^2.8.0",
     "@vercel/functions": "^3.9.9",
     "lucide-react": "^1.48.0",
     "mongodb": "^6.19.0",

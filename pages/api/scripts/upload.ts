@@ -29,7 +29,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const fileName = (script.name.replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 80) || 'script') + '.zip';
     const upload = bucket.openUploadStream(fileName, { metadata: { scriptId: id } });
     await pipeline(Readable.from(buffer), upload);
-    const result = await scripts.updateOne({ _id: id, deletedAt: null, fileId: script.fileId || { $exists: false } }, { $set: { fileId: upload.id.toHexString(), fileName, fileSize: size } });
+    const result = await scripts.updateOne({ _id: id, deletedAt: null, fileId: script.fileId || { $exists: false } }, { $set: { fileId: upload.id.toHexString(), fileName, fileSize: size }, $unset: { blobPath: '', pendingBlobPath: '', pendingBlobName: '' } });
     if (!result.modifiedCount) { await bucket.delete(upload.id); return res.status(409).json({ error: 'O script foi alterado. Atualize e tente novamente.' }); }
     if (script.fileId) { try { await bucket.delete(new ObjectId(script.fileId)); } catch { console.warn('[upload] Arquivo anterior pendente de limpeza.'); } }
     return res.status(200).json({ ok: true });

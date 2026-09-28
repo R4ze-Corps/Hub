@@ -1,3 +1,4 @@
+import { issueSignedToken, presignUrl } from '@vercel/blob';
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { getServerSession } from 'next-auth/next';
 import { GridFSBucket, ObjectId } from 'mongodb';
@@ -15,6 +16,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const script = await scripts.findOne({ _id: req.query.id, deletedAt: null });
     if (!script) return res.status(404).json({ error: 'Script indisponível.' });
     if (!isOwner(session.user.id) && !await licenses.findOne({ scriptId: script._id, discordId: session.user.id, status: 'active', ...unexpired() })) return res.status(403).json({ error: 'Você precisa de uma licença ativa para baixar este script.' });
+    if (script.blobPath) {
+      const validUntil = Date.now() + 60 * 1000;
+      const token = await issueSignedToken({ pathname: script.blobPath, operations: ['get'], validUntil });
+      const { presignedUrl } = await presignUrl(token, { operation: 'get', pathname: script.blobPath, access: 'private', validUntil });
+      if (req.query.delivery === 'link') return res.status(200).json({ url: presignedUrl, fileName: script.fileName || 'script.zip' });
+      return res.redirect(307, presignedUrl);
+    }
     if (!script.fileId) return res.status(404).json({ error: 'O ZIP ainda não foi publicado.' });
     const bucket = new GridFSBucket(db, { bucketName: 'hub_files' });
     const objectId = new ObjectId(script.fileId);

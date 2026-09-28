@@ -78,8 +78,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const visibleLicenses = await licenses.find(owner ? {} : { discordId: session.user.id }).sort({ createdAt: -1 }).toArray();
     const visibleScripts = await scripts.find({ deletedAt: null, ...(owner ? {} : { _id: { $in: visibleLicenses.filter(l => licenseStatus(l) === 'active').map(l => l.scriptId) } }) }).toArray();
     // Clientes recebem downloads apenas pela rota autenticada, após verificação da licença.
-    const publicScripts = visibleScripts.map(({ downloadUrl, fileId, ...script }) => ({ ...script, hasDownload: !!(downloadUrl || fileId) }));
-    return res.status(200).json({ scripts: publicScripts, licenses: visibleLicenses, ...(createdScriptId ? { createdScriptId } : {}) });
+    const publicScripts = visibleScripts.map(({ downloadUrl, fileId, blobPath, pendingBlobPath, pendingBlobName, ...script }) => ({ ...script, hasDownload: !!(blobPath || fileId) }));
+    return res.status(200).json({ scripts: publicScripts, licenses: visibleLicenses, uploadStorage: process.env.BLOB_READ_WRITE_TOKEN ? 'blob' : 'gridfs', ...(createdScriptId ? { createdScriptId } : {}) });
   } catch {
     console.error('[studio] Falha ao acessar o banco de licenças.');
     return res.status(503).json({ error: 'Não foi possível concluir a operação. Atualize o painel antes de tentar novamente.' });
